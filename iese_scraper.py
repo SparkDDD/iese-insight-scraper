@@ -203,3 +203,6 @@ while page <= 5:
 
 print(f"\n📦 Done. {len(new_articles)} new articles added with publication dates and authors.")
 send_email(new_articles)
+
+print(f"EMAIL_FROM: {EMAIL_FROM}")
+print(f"EMAIL_TO: {EMAIL_TO}")
