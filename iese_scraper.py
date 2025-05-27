@@ -125,7 +125,9 @@ base_url = "https://www.iese.edu/search/articles/"
 page = 1
 new_articles = []
 
-while True:
+# disable page iteration, added # below in front of while True
+
+# while True:
     page_url = base_url if page == 1 else f"{base_url}{page}/"
     print(f"\n🌍 Scraping page {page} → {page_url}")
     response = requests.get(page_url)
@@ -186,6 +188,8 @@ while True:
 
         except Exception as e:
             print(f"❌ Error processing article: {e}")
+
+# disable page iteration, added # below in front of page
 
     page += 1
 
