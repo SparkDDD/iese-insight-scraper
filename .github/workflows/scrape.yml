@@ -3,7 +3,7 @@ name: Scrape IESE Insight
 on:
   workflow_dispatch:  # enables manual trigger
   schedule:           # enables automatic schedule
-    - cron: '0 2 * * *'  # every day at 02:00 UTC (11:00 KST)
+    - cron: '0 5 * * *'    # runs daily at 2 PM KST (5 AM UTC)
 
 jobs:
   scrape:
