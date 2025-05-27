@@ -29,7 +29,7 @@ SMTP_PORT = int(os.getenv("EMAIL_PORT", 587))
 SMTP_USERNAME = os.getenv("EMAIL_HOST_USER")
 SMTP_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
 EMAIL_FROM = SMTP_USERNAME  # From address same as user
-EMAIL_TO = os.getenv("EMAIL_TO")
+EMAIL_TO = os.getenv("EMAIL_TO", "").replace("\n", "").strip()
 
 # Initialize Airtable API
 api = Api(AIRTABLE_API_KEY)
@@ -67,10 +67,21 @@ def send_email(new_articles):
     html += f"<footer><p>Sent from IESE Insight Scraper on {datetime.now().strftime('%Y-%m-%d %H:%M')}</p></footer>"
     html += "</body></html>"
 
+    # Get environment variables and sanitize
+    EMAIL_FROM = os.getenv("EMAIL_FROM", "").strip()
+    EMAIL_TO = os.getenv("EMAIL_TO", "").replace("\n", "").strip()
+    SMTP_SERVER = os.getenv("SMTP_SERVER", "").strip()
+    SMTP_PORT = int(os.getenv("SMTP_PORT", 587))
+    SMTP_USERNAME = os.getenv("SMTP_USERNAME", "").strip()
+    SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "").strip()
+
+    # Parse multiple recipients
+    recipients = [email.strip() for email in EMAIL_TO.split(",") if email.strip()]
+
     msg = MIMEMultipart("alternative")
     msg["Subject"] = "IESE Insight – New Articles Update"
     msg["From"] = EMAIL_FROM
-    msg["To"] = EMAIL_TO
+    msg["To"] = ", ".join(recipients)
 
     part = MIMEText(html, "html")
     msg.attach(part)
@@ -79,10 +90,11 @@ def send_email(new_articles):
         with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
             server.starttls()
             server.login(SMTP_USERNAME, SMTP_PASSWORD)
-            server.sendmail(EMAIL_FROM, EMAIL_TO, msg.as_string())
+            server.sendmail(EMAIL_FROM, recipients, msg.as_string())
         print("✅ Email sent successfully.")
     except Exception as e:
         print(f"❌ Failed to send email: {e}")
+
 
 def normalize_url(url):
     parsed = urlparse(url.strip())
