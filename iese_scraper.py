@@ -10,11 +10,6 @@ AIRTABLE_API_KEY = os.getenv("AIRTABLE_API_KEY")
 BASE_ID = os.getenv("AIRTABLE_BASE_ID")
 TABLE_NAME = os.getenv("AIRTABLE_TABLE_ID")  # e.g., "IESE Articles"
 
-print(f"AIRTABLE_API_KEY: {bool(AIRTABLE_API_KEY)}")
-print(f"AIRTABLE_BASE_ID: {BASE_ID}")
-print(f"AIRTABLE_TABLE_ID: {TABLE_NAME}")
-
-
 # Airtable field IDs
 FIELD_CATEGORY = "fld86aIQ2aip49mBR"
 FIELD_TITLE = "fldTjUp5kghUxk2wx"
