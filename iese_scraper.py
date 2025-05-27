@@ -23,17 +23,17 @@ FIELD_IMAGE_URL = "fldV56jttpZRxzR0r"
 FIELD_PUBLICATION_DATE = "fldlHc103Jtojef4v"
 FIELD_AUTHOR = "fld4rLLOIpyeeCxa4"
 
-# Email setup (matches GitHub Secrets)
-SMTP_SERVER = os.getenv("EMAIL_HOST")
-SMTP_PORT = int(os.getenv("EMAIL_PORT", 587))
-SMTP_USERNAME = os.getenv("EMAIL_HOST_USER")
-SMTP_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
-EMAIL_FROM = SMTP_USERNAME  # From address same as user
-EMAIL_TO = os.getenv("EMAIL_TO", "").replace("\n", "").strip()
-
 # Initialize Airtable API
 api = Api(AIRTABLE_API_KEY)
 table = api.table(BASE_ID, TABLE_NAME)
+
+# Email setup
+EMAIL_FROM = os.getenv("EMAIL_FROM")
+EMAIL_TO = os.getenv("EMAIL_TO", "").split(",")  # Comma-separated list
+SMTP_SERVER = os.getenv("SMTP_SERVER")
+SMTP_PORT = int(os.getenv("SMTP_PORT", 587))
+SMTP_USERNAME = os.getenv("SMTP_USERNAME")
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
 
 def send_email(new_articles):
     if not new_articles:
@@ -67,34 +67,24 @@ def send_email(new_articles):
     html += f"<footer><p>Sent from IESE Insight Scraper on {datetime.now().strftime('%Y-%m-%d %H:%M')}</p></footer>"
     html += "</body></html>"
 
-    # Get environment variables and sanitize
-    EMAIL_FROM = os.getenv("EMAIL_FROM", "").strip()
-    EMAIL_TO = os.getenv("EMAIL_TO", "").replace("\n", "").strip()
-    SMTP_SERVER = os.getenv("SMTP_SERVER", "").strip()
-    SMTP_PORT = int(os.getenv("SMTP_PORT", 587))
-    SMTP_USERNAME = os.getenv("SMTP_USERNAME", "").strip()
-    SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "").strip()
-
-    # Parse multiple recipients
-    recipients = [email.strip() for email in EMAIL_TO.split(",") if email.strip()]
-
     msg = MIMEMultipart("alternative")
     msg["Subject"] = "IESE Insight – New Articles Update"
     msg["From"] = EMAIL_FROM
-    msg["To"] = ", ".join(recipients)
+    msg["To"] = ", ".join(EMAIL_TO)
 
     part = MIMEText(html, "html")
     msg.attach(part)
 
     try:
         with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+            server.ehlo()
             server.starttls()
+            server.ehlo()
             server.login(SMTP_USERNAME, SMTP_PASSWORD)
-            server.sendmail(EMAIL_FROM, recipients, msg.as_string())
+            server.sendmail(EMAIL_FROM, EMAIL_TO, msg.as_string())
         print("✅ Email sent successfully.")
     except Exception as e:
         print(f"❌ Failed to send email: {e}")
-
 
 def normalize_url(url):
     parsed = urlparse(url.strip())
@@ -104,6 +94,7 @@ def extract_article_details(article_url):
     try:
         response = requests.get(article_url)
         soup = BeautifulSoup(response.text, "html.parser")
+
         pub_date = None
         script_tag = soup.find("script", type="application/ld+json", class_="yoast-schema-graph")
         if script_tag:
@@ -111,11 +102,14 @@ def extract_article_details(article_url):
             for item in json_data.get("@graph", []):
                 if item.get("@type") == "Article" and "datePublished" in item:
                     pub_date = item["datePublished"].split("T")[0]
+
         author = None
         author_div = soup.find("div", class_="author-name")
         if author_div:
             author = author_div.get_text(strip=True)
+
         return pub_date, author
+
     except Exception as e:
         print(f"⚠️ Could not extract details from {article_url}: {e}")
         return None, None
@@ -137,7 +131,7 @@ base_url = "https://www.iese.edu/search/articles/"
 page = 1
 new_articles = []
 
-while page <= 5:
+while page <= 5:  # Limit to 5 pages only
     page_url = base_url if page == 1 else f"{base_url}{page}/"
     print(f"\n🌍 Scraping page {page} → {page_url}")
     response = requests.get(page_url)
@@ -203,6 +197,7 @@ while page <= 5:
 
 print(f"\n📦 Done. {len(new_articles)} new articles added with publication dates and authors.")
 send_email(new_articles)
+
 
 print(f"EMAIL_FROM: {EMAIL_FROM}")
 print(f"EMAIL_TO: {EMAIL_TO}")
