@@ -201,3 +201,4 @@ send_email(new_articles)
 
 print(f"EMAIL_FROM: {EMAIL_FROM}")
 print(f"EMAIL_TO: {EMAIL_TO}")
+print(1)
