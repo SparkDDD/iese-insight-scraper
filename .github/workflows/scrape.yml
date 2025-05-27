@@ -1,9 +1,9 @@
 name: Scrape IESE Insight
 
 on:
-  schedule:
-    - cron: '0 3 * * *'  # runs daily at 03:00 UTC
-  workflow_dispatch:    # allows manual trigger from GitHub
+  workflow_dispatch:  # enables manual trigger
+  schedule:           # enables automatic schedule
+    - cron: '0 2 * * *'  # every day at 02:00 UTC (11:00 KST)
 
 jobs:
   scrape:
@@ -15,16 +15,14 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: 3.11
+          python-version: '3.11'
 
       - name: Install dependencies
-        run: |
-          pip install -r requirements.txt
+        run: pip install -r requirements.txt
 
       - name: Run scraper
         env:
           AIRTABLE_API_KEY: ${{ secrets.AIRTABLE_API_KEY }}
           AIRTABLE_BASE_ID: ${{ secrets.AIRTABLE_BASE_ID }}
           AIRTABLE_TABLE_ID: ${{ secrets.AIRTABLE_TABLE_ID }}
-        run: |
-          python iese_scraper.py
+        run: python iese_scraper.py
