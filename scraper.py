@@ -84,7 +84,7 @@ try:
         server.sendmail(EMAIL_FROM, EMAIL_TO.split(","), msg.as_string())
         server.quit()
         print("✅ Email sent.")
-    except Exception as e:
+except Exception as e:
         print(f"❌ Failed to send email: {e}")
 
 
