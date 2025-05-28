@@ -4,9 +4,6 @@ from pyairtable import Api
 from urllib.parse import urlparse
 import json
 import os
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
 from dotenv import load_dotenv
 
 load_dotenv()  # For local testing only
@@ -15,14 +12,6 @@ load_dotenv()  # For local testing only
 AIRTABLE_API_KEY = os.getenv("AIRTABLE_API_KEY")
 BASE_ID = os.getenv("AIRTABLE_BASE_ID")
 TABLE_NAME = os.getenv("AIRTABLE_TABLE_ID")
-
-# Email config
-EMAIL_FROM = os.getenv("EMAIL_FROM")
-EMAIL_TO = os.getenv("EMAIL_TO")
-SMTP_SERVER = os.getenv("SMTP_SERVER", "smtp.gmail.com")
-SMTP_PORT = int(os.getenv("SMTP_PORT") or 587)
-SMTP_USERNAME = os.getenv("SMTP_USERNAME")
-SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
 
 # Airtable fields
 FIELD_CATEGORY = "fld86aIQ2aip49mBR"
@@ -37,11 +26,9 @@ FIELD_AUTHOR = "fld4rLLOIpyeeCxa4"
 api = Api(AIRTABLE_API_KEY)
 table = api.table(BASE_ID, TABLE_NAME)
 
-
 def normalize_url(url):
     parsed = urlparse(url.strip())
     return f"{parsed.scheme}://{parsed.netloc}{parsed.path}".rstrip("/")
-
 
 def extract_article_details(article_url):
     try:
@@ -61,32 +48,6 @@ def extract_article_details(article_url):
     except Exception as e:
         print(f"⚠️ Error extracting {article_url}: {e}")
         return None, None
-
-
-def send_email(new_articles):
-    subject = f"📬 {len(new_articles)} New IESE Article(s) Found"
-    body = "Here are the latest articles:\n\n"
-    for art in new_articles:
-        body += f"• {art['title']} ({art.get('publication_date', 'No date')})\n  {art['url']}\n\n"
-
-    msg = MIMEMultipart()
-    msg["From"] = EMAIL_FROM
-    msg["To"] = EMAIL_TO
-    msg["Subject"] = subject
-    msg.attach(MIMEText(body, "plain"))
-
-try:
-        server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
-        server.ehlo()
-        server.starttls()
-        server.ehlo()
-        server.login(SMTP_USERNAME, SMTP_PASSWORD)
-        server.sendmail(EMAIL_FROM, EMAIL_TO.split(","), msg.as_string())
-        server.quit()
-        print("✅ Email sent.")
-except Exception as e:
-        print(f"❌ Failed to send email: {e}")
-
 
 # Step 1: Get existing articles
 existing_urls = set()
@@ -115,8 +76,7 @@ for page in range(1, max_pages + 1):
             title = box.select_one('h3.title-icon').get_text(strip=True)
             summary = box.select_one('p.subtitle-icon').get_text(strip=True)
             raw_url = box.select_one('a.title-link')['href']
-            full_url = f"https://www.iese.edu{raw_url}" if raw_url.startswith(
-                "/") else raw_url
+            full_url = f"https://www.iese.edu{raw_url}" if raw_url.startswith("/") else raw_url
             article_url = normalize_url(full_url)
 
             if article_url in existing_urls:
@@ -150,8 +110,8 @@ for page in range(1, max_pages + 1):
         except Exception as e:
             print(f"❌ Error processing: {e}")
 
-# Step 3: Notify if any
+# Final output
 if new_articles:
-    send_email(new_articles)
+    print(f"📦 {len(new_articles)} new article(s) added.")
 else:
     print("ℹ️ No new articles found.")
