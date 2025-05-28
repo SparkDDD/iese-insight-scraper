@@ -2,8 +2,8 @@ name: Run IESE Scraper 8 AM
 
 on:
   schedule:
-    - cron: '0 23 * * *'  # Runs every day at 8 AM KST
-      workflow_dispatch:       # Allow manual trigger
+  - cron: '0 */6 * * *'  # Every 6 hours (UTC)
+  workflow_dispatch:       # Allow manual trigger
 
 jobs:
   run-scraper:
