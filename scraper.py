@@ -79,6 +79,7 @@ def send_email(new_articles):
         with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
             server.ehlo()
             server.starttls()
+            server.ehlo()
             server.login(SMTP_USERNAME, SMTP_PASSWORD)
             server.sendmail(EMAIL_FROM, EMAIL_TO.split(','), msg.as_string())
         print("✅ Email sent.")
