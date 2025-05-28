@@ -70,18 +70,19 @@ def send_email(new_articles):
         body += f"• {art['title']} ({art.get('publication_date', 'No date')})\n  {art['url']}\n\n"
 
     msg = MIMEMultipart()
-    msg['From'] = EMAIL_FROM
-    msg['To'] = EMAIL_TO
-    msg['Subject'] = subject
+    msg["From"] = EMAIL_FROM
+    msg["To"] = EMAIL_TO
+    msg["Subject"] = subject
     msg.attach(MIMEText(body, "plain"))
 
-    try:
-        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
-            server.ehlo()
-            server.starttls()
-            server.ehlo()
-            server.login(SMTP_USERNAME, SMTP_PASSWORD)
-            server.sendmail(EMAIL_FROM, EMAIL_TO.split(','), msg.as_string())
+try:
+        server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
+        server.ehlo()
+        server.starttls()
+        server.ehlo()
+        server.login(SMTP_USERNAME, SMTP_PASSWORD)
+        server.sendmail(EMAIL_FROM, EMAIL_TO.split(","), msg.as_string())
+        server.quit()
         print("✅ Email sent.")
     except Exception as e:
         print(f"❌ Failed to send email: {e}")
