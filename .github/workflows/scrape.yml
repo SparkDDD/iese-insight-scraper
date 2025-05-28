@@ -1,4 +1,4 @@
-name: Run IESE Scraper Every 5 Minutes
+name: Run IESE Scraper 8 AM
 
 on:
   schedule:
