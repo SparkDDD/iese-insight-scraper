@@ -56,7 +56,7 @@ base_url = "https://www.iese.edu/search/articles/"
 new_rows = []
 batch = []
 
-for page in range(1, 30):
+for page in range(1, 5):
     url = base_url if page == 1 else f"{base_url}{page}/"
     res = requests.get(url)
     if res.status_code != 200:
