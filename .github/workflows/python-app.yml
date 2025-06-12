@@ -1,0 +1,30 @@
+name: IESE Insight Scraper
+
+on:
+  schedule:
+    - cron: '0 2 * * *'  # Runs daily at 2:00 AM UTC
+  workflow_dispatch:  # Allows manual run from GitHub UI
+
+jobs:
+  scrape-and-upload:
+    runs-on: ubuntu-latest
+
+    env:
+      JSON_KEY: ${{ secrets.JSON_KEY }}
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v3
+
+      - name: 🐍 Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: 📦 Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests beautifulsoup4 gspread python-dotenv
+
+      - name: ▶️ Run scraper
+        run: python scraper.py
