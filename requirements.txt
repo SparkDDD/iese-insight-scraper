@@ -2,3 +2,5 @@ requests
 beautifulsoup4
 gspread
 python-dotenv
+oauth2client
+Pillow
