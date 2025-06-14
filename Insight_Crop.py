@@ -7,7 +7,6 @@ from PIL import Image
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 
-# --- Step 1: Crop image to 2:1 ratio ---
 def crop_to_2x1(image_url, output_folder='cropped_images'):
     os.makedirs(output_folder, exist_ok=True)
     response = requests.get(image_url)
@@ -30,13 +29,12 @@ def crop_to_2x1(image_url, output_folder='cropped_images'):
         top = 0
         bottom = height
 
-    cropped_img = img.crop((left, top, right, bottom))
+    cropped_img = img.crop((left, top, right, bottom)).convert("RGB")
     file_hash = hashlib.md5(image_url.encode('utf-8')).hexdigest()
     file_path = os.path.join(output_folder, f"{file_hash}.jpg")
     cropped_img.save(file_path, "JPEG")
     return file_path
 
-# --- Step 2: Upload to Cloudinary into folder ---
 def upload_to_cloudinary(file_path, cloud_name, upload_preset, folder="Insight_Crop"):
     url = f"https://api.cloudinary.com/v1_1/{cloud_name}/image/upload"
     with open(file_path, "rb") as file_data:
@@ -52,7 +50,6 @@ def upload_to_cloudinary(file_path, cloud_name, upload_preset, folder="Insight_C
         raise Exception(f"Upload failed: {response.text}")
     return response.json()["secure_url"]
 
-# --- Step 3: Authorize Google Sheets with service key from GitHub secret ---
 def authorize_gspread_from_secret(json_key_env_var='JSON_KEY'):
     json_key = os.environ.get(json_key_env_var)
     if not json_key:
@@ -62,26 +59,25 @@ def authorize_gspread_from_secret(json_key_env_var='JSON_KEY'):
     credentials = ServiceAccountCredentials.from_json_keyfile_dict(key_dict, scopes)
     return gspread.authorize(credentials)
 
-# --- Step 4: Process Sheet Rows ---
 def process_sheet_images(sheet_id, sheet_name, cloud_name, upload_preset):
     client = authorize_gspread_from_secret()
     sheet = client.open_by_key(sheet_id).worksheet(sheet_name)
-    records = sheet.get_all_records()
-
     headers = sheet.row_values(1)
+
     if 'Cropped Image URL' not in headers:
         sheet.update_cell(1, len(headers) + 1, 'Cropped Image URL')
         headers.append('Cropped Image URL')
 
     cropped_col_index = headers.index('Cropped Image URL') + 1
+    image_col_index = headers.index('ImageFile URL') + 1
 
-    for i, row in enumerate(records):
-        image_url = row.get('ImageFile URL')
-        cropped_url = row.get('Cropped Image URL')
+    for i in range(2, 12):  # Rows 2 to 11
+        image_url = sheet.cell(i, image_col_index).value
+        cropped_url = sheet.cell(i, cropped_col_index).value
 
         if image_url and not cropped_url:
             try:
-                print(f"Processing row {i + 2}...")
+                print(f"Processing row {i}...")
                 cropped_path = crop_to_2x1(image_url)
                 public_url = upload_to_cloudinary(
                     file_path=cropped_path,
@@ -89,12 +85,13 @@ def process_sheet_images(sheet_id, sheet_name, cloud_name, upload_preset):
                     upload_preset=upload_preset,
                     folder="Insight_Crop"
                 )
-                sheet.update_cell(i + 2, cropped_col_index, public_url)
+                sheet.update_cell(i, cropped_col_index, public_url)
                 os.remove(cropped_path)
             except Exception as e:
-                sheet.update_cell(i + 2, cropped_col_index, f"Error: {str(e)}")
+                sheet.update_cell(i, cropped_col_index, f"Error: {str(e)}")
+        else:
+            print(f"Skipping row {i} (already processed or missing original URL)")
 
-# --- Step 5: Entry Point for GitHub Action ---
 if __name__ == "__main__":
     process_sheet_images(
         sheet_id='1HFN3fmDG927674xXzjtf6mMQEneCOQEkxaAfDGEQONU',
