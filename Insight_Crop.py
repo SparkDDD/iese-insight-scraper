@@ -62,22 +62,45 @@ def authorize_gspread_from_secret(json_key_env_var='JSON_KEY'):
 def process_sheet_images(sheet_id, sheet_name, cloud_name, upload_preset):
     client = authorize_gspread_from_secret()
     sheet = client.open_by_key(sheet_id).worksheet(sheet_name)
-    headers = sheet.row_values(1)
 
+    # Fetch all data to determine the number of rows and column indices efficiently
+    all_data = sheet.get_all_values()
+    if not all_data:
+        print("Sheet is empty. No data to process.")
+        return
+
+    headers = all_data[0] # First row is headers
+
+    # Ensure 'Cropped Image URL' column exists
     if 'Cropped Image URL' not in headers:
+        # Update the header row in the sheet
         sheet.update_cell(1, len(headers) + 1, 'Cropped Image URL')
-        headers.append('Cropped Image URL')
+        headers.append('Cropped Image URL') # Update local headers list too
 
-    cropped_col_index = headers.index('Cropped Image URL') + 1
-    image_col_index = headers.index('ImageFile URL') + 1
+    try:
+        image_col_index = headers.index('ImageFile URL')
+        cropped_col_index = headers.index('Cropped Image URL')
+    except ValueError as e:
+        print(f"Error: Required column not found in headers. Please ensure 'ImageFile URL' and 'Cropped Image URL' exist. {e}")
+        return
 
-    for i in range(2, 12):  # Rows 2 to 11
-        image_url = sheet.cell(i, image_col_index).value
-        cropped_url = sheet.cell(i, cropped_col_index).value
+    # Iterate starting from the second row (index 1 in all_data list)
+    # The 'row_num' variable represents the actual row number in Google Sheet (1-indexed)
+    for row_num_list_index, row_data in enumerate(all_data):
+        if row_num_list_index == 0: # Skip header row
+            continue
 
+        # Get actual sheet row number (1-indexed)
+        actual_sheet_row_num = row_num_list_index + 1
+
+        # Safely get values, handling cases where row_data might be shorter than expected
+        image_url = row_data[image_col_index] if image_col_index < len(row_data) else ''
+        cropped_url = row_data[cropped_col_index] if cropped_col_index < len(row_data) else ''
+
+        # Check if image_url exists and cropped_url is empty
         if image_url and not cropped_url:
+            print(f"Processing row {actual_sheet_row_num} (Image: {image_url})...")
             try:
-                print(f"Processing row {i}...")
                 cropped_path = crop_to_2x1(image_url)
                 public_url = upload_to_cloudinary(
                     file_path=cropped_path,
@@ -85,12 +108,20 @@ def process_sheet_images(sheet_id, sheet_name, cloud_name, upload_preset):
                     upload_preset=upload_preset,
                     folder="Insight_Crop"
                 )
-                sheet.update_cell(i, cropped_col_index, public_url)
-                os.remove(cropped_path)
+                # Update the cell in the Google Sheet
+                sheet.update_cell(actual_sheet_row_num, cropped_col_index + 1, public_url) # +1 for gspread's 1-indexed column
+                os.remove(cropped_path) # Clean up local cropped file
+                print(f"Successfully processed row {actual_sheet_row_num}: {public_url}")
             except Exception as e:
-                sheet.update_cell(i, cropped_col_index, f"Error: {str(e)}")
+                # Log error in the sheet and to console
+                error_message = f"Error: {str(e)}"
+                sheet.update_cell(actual_sheet_row_num, cropped_col_index + 1, error_message)
+                print(f"Failed to process row {actual_sheet_row_num}: {error_message}")
+        elif image_url and cropped_url:
+            print(f"Skipping row {actual_sheet_row_num}: Image already processed.")
         else:
-            print(f"Skipping row {i} (already processed or missing original URL)")
+            print(f"Skipping row {actual_sheet_row_num}: No original image URL found.")
+
 
 if __name__ == "__main__":
     process_sheet_images(
